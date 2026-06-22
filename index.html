@@ -89,32 +89,36 @@
     border: 1px solid var(--border);
   }
 
+  /* single result takes full width, not half */
+  .grid.single-result {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+
   .card {
     background: var(--bg2);
     padding: 1.6rem;
     transition: background 0.2s;
-    cursor: pointer;
-    position: relative;
   }
   .card:hover { background: var(--surface); }
-  .card.active { background: var(--surface); border-left: 2px solid var(--accent3); }
 
   .card-img {
     width: 100%;
-    height: 200px;
+    height: 220px;
     object-fit: cover;
-    object-position: top;
+    object-position: top center;
     margin-bottom: 1rem;
     border: 1px solid var(--border);
-    filter: grayscale(30%) contrast(1.1);
+    filter: grayscale(20%) contrast(1.05);
     transition: filter 0.3s;
     display: block;
+    background: var(--surface);
   }
   .card:hover .card-img { filter: grayscale(0%) contrast(1.1); }
 
   .card-img-placeholder {
     width: 100%;
-    height: 200px;
+    height: 220px;
     background: var(--surface);
     border: 1px dashed var(--border);
     display: flex;
@@ -183,31 +187,31 @@
 <script>
   let allCharacters = [];
 
-  // Hardcoded images from Marvel's official public CDN / wiki
+  // Images from Marvel fandom wiki (no hotlink blocking)
   const CHARACTER_IMAGES = {
-    "Spider-Man": "https://upload.wikimedia.org/wikipedia/en/2/21/Web_of_Spider-Man_Vol_1_129-1.png",
-    "Iron Man": "https://upload.wikimedia.org/wikipedia/en/4/47/Iron_Man_%28circa_2018%29.png",
-    "Captain America": "https://upload.wikimedia.org/wikipedia/en/3/35/Captain_America_Steve_Rogers.png",
-    "Thor": "https://upload.wikimedia.org/wikipedia/en/a/a7/Thor_Odinson.png",
-    "Hulk": "https://upload.wikimedia.org/wikipedia/en/5/53/Hulk_%28circa_2019%29.png",
-    "Black Widow": "https://upload.wikimedia.org/wikipedia/en/9/93/Black_Widow_%28Natasha_Romanova%29.png",
-    "Black Panther": "https://upload.wikimedia.org/wikipedia/en/1/1b/Black_Panther_%28Marvel_Comics%29.png",
-    "Doctor Strange": "https://upload.wikimedia.org/wikipedia/en/d/df/Doctor_Strange_%28circa_2016%29.png",
-    "Scarlet Witch": "https://upload.wikimedia.org/wikipedia/en/2/27/Scarlet_Witch_%28circa_2022%29.png",
-    "Wolverine": "https://upload.wikimedia.org/wikipedia/en/0/0a/Wolverine_%28circa_2023%29.png",
-    "Deadpool": "https://upload.wikimedia.org/wikipedia/en/a/a9/Deadpool_%28circa_2019%29.png",
-    "Carol Danvers": "https://upload.wikimedia.org/wikipedia/en/4/4a/Ms._Marvel_cover.jpg",
-    "Daredevil": "https://upload.wikimedia.org/wikipedia/en/d/d5/Daredevil_%28Marvel_Comics_character%29.png",
-    "Ant-Man": "https://upload.wikimedia.org/wikipedia/en/0/04/Ant-Man_%28Scott_Lang%29.png"
+    "Spider-Man":     "https://static.wikia.nocookie.net/marveldatabase/images/5/56/Peter_Parker_%28Earth-616%29_from_Amazing_Spider-Man_Vol_1_1_001.jpg",
+    "Iron Man":       "https://static.wikia.nocookie.net/marveldatabase/images/e/e0/Anthony_Stark_%28Earth-616%29_from_Iron_Man_Vol_5_1_001.jpg",
+    "Captain America":"https://static.wikia.nocookie.net/marveldatabase/images/2/20/Steven_Rogers_%28Earth-616%29_from_All-New_Captain_America_Vol_1_1_001.jpg",
+    "Thor":           "https://static.wikia.nocookie.net/marveldatabase/images/c/ce/Thor_Odinson_%28Earth-616%29_from_Thor_Vol_4_1_001.jpg",
+    "Hulk":           "https://static.wikia.nocookie.net/marveldatabase/images/6/6e/Bruce_Banner_%28Earth-616%29_from_Totally_Awesome_Hulk_Vol_1_1_001.jpg",
+    "Black Widow":    "https://static.wikia.nocookie.net/marveldatabase/images/2/27/Natalia_Romanova_%28Earth-616%29_from_Black_Widow_Vol_6_1_001.jpg",
+    "Black Panther":  "https://static.wikia.nocookie.net/marveldatabase/images/5/52/T%27Challa_%28Earth-616%29_from_Black_Panther_Vol_6_1_001.jpg",
+    "Doctor Strange": "https://static.wikia.nocookie.net/marveldatabase/images/c/c4/Stephen_Strange_%28Earth-616%29_from_Doctor_Strange_Vol_4_1_001.jpg",
+    "Scarlet Witch":  "https://static.wikia.nocookie.net/marveldatabase/images/3/3c/Wanda_Maximoff_%28Earth-616%29_from_Scarlet_Witch_Vol_3_1_001.jpg",
+    "Wolverine":      "https://static.wikia.nocookie.net/marveldatabase/images/0/0a/James_Howlett_%28Earth-616%29_from_Wolverine_Vol_7_1_001.jpg",
+    "Deadpool":       "https://static.wikia.nocookie.net/marveldatabase/images/9/90/Wade_Wilson_%28Earth-616%29_from_Deadpool_Vol_8_1_001.jpg",
+    "Carol Danvers":  "https://static.wikia.nocookie.net/marveldatabase/images/4/46/Carol_Danvers_%28Earth-616%29_from_Captain_Marvel_Vol_10_1_001.jpg",
+    "Daredevil":      "https://static.wikia.nocookie.net/marveldatabase/images/7/72/Matthew_Murdock_%28Earth-616%29_from_Daredevil_Vol_6_1_001.jpg",
+    "Ant-Man":        "https://static.wikia.nocookie.net/marveldatabase/images/3/30/Scott_Lang_%28Earth-616%29_from_Ant-Man_Vol_2_1_001.jpg"
   };
 
   const FIELD_MAP = [
-    { label: 'Real Name', keys: ['Full name', 'Alter ego', 'Real name'] },
+    { label: 'Real Name',        keys: ['Full name', 'Alter ego', 'Real name'] },
     { label: 'First Appearance', keys: ['First appearance'] },
-    { label: 'Created By', keys: ['Created by'] },
-    { label: 'Affiliations', keys: ['Team affiliations', 'Affiliations'] },
-    { label: 'Notable Aliases', keys: ['Notable aliases'] },
-    { label: 'Abilities', keys: ['Abilities'] },
+    { label: 'Created By',       keys: ['Created by'] },
+    { label: 'Affiliations',     keys: ['Team affiliations', 'Affiliations'] },
+    { label: 'Notable Aliases',  keys: ['Notable aliases'] },
+    { label: 'Abilities',        keys: ['Abilities'] },
   ];
 
   function findField(character, keys) {
@@ -220,20 +224,22 @@
   function renderCards(characters) {
     const grid = document.getElementById('grid');
     if (characters.length === 0) {
+      grid.className = 'grid';
       grid.innerHTML = '<div class="empty">No characters match your search.</div>';
       return;
     }
+
+    // Fix: single result gets its own class so it doesn't stretch across empty columns
+    grid.className = characters.length === 1 ? 'grid single-result' : 'grid';
+
     grid.innerHTML = characters.map(char => {
       const imgUrl = CHARACTER_IMAGES[char.name];
-      const imgHtml = imgUrl
-        ? `<img class="card-img" src="${imgUrl}" alt="${char.name}" onerror="this.parentElement.querySelector('.card-img-placeholder') && (this.style.display='none'); this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='flex');">`
-        : '';
-      const placeholderHtml = `<div class="card-img-placeholder" style="display:${imgUrl ? 'none' : 'flex'}">NO IMAGE</div>`;
-
       return `
       <div class="card">
-        ${imgHtml}
-        ${placeholderHtml}
+        ${imgUrl
+          ? `<img class="card-img" src="${imgUrl}" alt="${char.name}" onerror="this.outerHTML='<div class=card-img-placeholder>IMAGE UNAVAILABLE</div>'">`
+          : `<div class="card-img-placeholder">NO IMAGE</div>`
+        }
         <div class="card-name">${char.name}</div>
         ${FIELD_MAP.map(f => {
           const value = findField(char, f.keys);
