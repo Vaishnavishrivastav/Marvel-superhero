@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marvel Character Database — Web Scraper</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050508;
+    --bg2: #0a0a10;
+    --surface: #0f0f18;
+    --accent: #7fff7f;
+    --accent2: #ff2fff;
+    --accent3: #2fffff;
+    --text: #e8e8f0;
+    --muted: #555566;
+    --border: #1a1a2e;
+    --mono: 'Space Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    padding: 4rem 2rem;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--border); max-width: 200px; }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(2.4rem, 7vw, 4rem);
+    line-height: 0.95;
+  }
+  h1 span { color: var(--accent2); }
+
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.6rem;
+    margin-bottom: 2.2rem;
+  }
+
+  .search {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 2.5rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search::placeholder { color: var(--muted); }
+  .search:focus { border-color: var(--accent3); }
+
+  #status {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .card {
+    background: var(--bg2);
+    padding: 1.6rem;
+    transition: background 0.2s;
+  }
+  .card:hover { background: var(--surface); }
+
+  .card-name {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    color: var(--accent3);
+    margin-bottom: 0.8rem;
+  }
+
+  .field { margin-bottom: 0.7rem; }
+  .field-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+  .field-value {
+    font-size: 0.85rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .card-link {
+    display: inline-block;
+    margin-top: 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+  }
+  .card-link:hover { color: var(--accent3); }
+
+  .empty {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    padding: 4rem 1rem;
+    border: 1px dashed var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Web Scraper Engine</div>
+  <h1>MARVEL CHARACTER <span>DATABASE</span></h1>
+  <div class="subtitle">Scraped live from Wikipedia infoboxes using Python + BeautifulSoup</div>
+
+  <input type="text" class="search" id="searchInput" placeholder="Search by character name...">
+  <div id="status">Loading data...</div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+  let allCharacters = [];
+
+  // The interesting fields to surface on each card, in display order.
+  // Wikipedia infoboxes don't use identical labels across pages, so we
+  // check a few common variants for each field.
+  const FIELD_MAP = [
+    { label: 'Real Name', keys: ['Real name', 'Alter ego'] },
+    { label: 'First Appearance', keys: ['First appearance'] },
+    { label: 'Created By', keys: ['Created by'] },
+    { label: 'Affiliations', keys: ['Team affiliations', 'Affiliations'] },
+    { label: 'Notable Aliases', keys: ['Notable aliases'] },
+    { label: 'Abilities', keys: ['Abilities'] },
+  ];
+
+  function findField(character, keys) {
+    for (const key of keys) {
+      if (character[key]) return character[key];
+    }
+    return null;
+  }
+
+  function renderCards(characters) {
+    const grid = document.getElementById('grid');
+    if (characters.length === 0) {
+      grid.innerHTML = '<div class="empty">No characters match your search.</div>';
+      return;
+    }
+    grid.innerHTML = characters.map(char => `
+      <div class="card">
+        <div class="card-name">${char.name}</div>
+        ${FIELD_MAP.map(f => {
+          const value = findField(char, f.keys);
+          if (!value) return '';
+          return `
+            <div class="field">
+              <div class="field-label">${f.label}</div>
+              <div class="field-value">${value}</div>
+            </div>`;
+        }).join('')}
+        <a class="card-link" href="${char.source_url}" target="_blank">View source ↗</a>
+      </div>
+    `).join('');
+  }
+
+  function loadData() {
+    fetch('marvel_characters.json')
+      .then(res => {
+        if (!res.ok) throw new Error('File not found');
+        return res.json();
+      })
+      .then(data => {
+        allCharacters = data;
+        document.getElementById('status').textContent = `${data.length} characters loaded`;
+        renderCards(allCharacters);
+      })
+      .catch(() => {
+        document.getElementById('status').textContent = '';
+        document.getElementById('grid').innerHTML = `
+          <div class="empty">
+            No data found yet.<br><br>
+            Run <strong>marvel_scraper.py</strong> first to generate marvel_characters.json,<br>
+            then make sure it sits in the same folder as this page.
+          </div>`;
+      });
+  }
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    const query = e.target.value.toLowerCase();
+    renderCards(allCharacters.filter(c => c.name.toLowerCase().includes(query)));
+  });
+
+  loadData();
+</script>
+</body>
+</html>
