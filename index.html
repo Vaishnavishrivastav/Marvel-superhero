@@ -93,8 +93,38 @@
     background: var(--bg2);
     padding: 1.6rem;
     transition: background 0.2s;
+    cursor: pointer;
+    position: relative;
   }
   .card:hover { background: var(--surface); }
+  .card.active { background: var(--surface); border-left: 2px solid var(--accent3); }
+
+  .card-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    object-position: top;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    filter: grayscale(30%) contrast(1.1);
+    transition: filter 0.3s;
+    display: block;
+  }
+  .card:hover .card-img { filter: grayscale(0%) contrast(1.1); }
+
+  .card-img-placeholder {
+    width: 100%;
+    height: 200px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
 
   .card-name {
     font-family: var(--display);
@@ -153,11 +183,26 @@
 <script>
   let allCharacters = [];
 
-  // The interesting fields to surface on each card, in display order.
-  // Wikipedia infoboxes don't use identical labels across pages, so we
-  // check a few common variants for each field.
+  // Hardcoded images from Marvel's official public CDN / wiki
+  const CHARACTER_IMAGES = {
+    "Spider-Man": "https://upload.wikimedia.org/wikipedia/en/2/21/Web_of_Spider-Man_Vol_1_129-1.png",
+    "Iron Man": "https://upload.wikimedia.org/wikipedia/en/4/47/Iron_Man_%28circa_2018%29.png",
+    "Captain America": "https://upload.wikimedia.org/wikipedia/en/3/35/Captain_America_Steve_Rogers.png",
+    "Thor": "https://upload.wikimedia.org/wikipedia/en/a/a7/Thor_Odinson.png",
+    "Hulk": "https://upload.wikimedia.org/wikipedia/en/5/53/Hulk_%28circa_2019%29.png",
+    "Black Widow": "https://upload.wikimedia.org/wikipedia/en/9/93/Black_Widow_%28Natasha_Romanova%29.png",
+    "Black Panther": "https://upload.wikimedia.org/wikipedia/en/1/1b/Black_Panther_%28Marvel_Comics%29.png",
+    "Doctor Strange": "https://upload.wikimedia.org/wikipedia/en/d/df/Doctor_Strange_%28circa_2016%29.png",
+    "Scarlet Witch": "https://upload.wikimedia.org/wikipedia/en/2/27/Scarlet_Witch_%28circa_2022%29.png",
+    "Wolverine": "https://upload.wikimedia.org/wikipedia/en/0/0a/Wolverine_%28circa_2023%29.png",
+    "Deadpool": "https://upload.wikimedia.org/wikipedia/en/a/a9/Deadpool_%28circa_2019%29.png",
+    "Carol Danvers": "https://upload.wikimedia.org/wikipedia/en/4/4a/Ms._Marvel_cover.jpg",
+    "Daredevil": "https://upload.wikimedia.org/wikipedia/en/d/d5/Daredevil_%28Marvel_Comics_character%29.png",
+    "Ant-Man": "https://upload.wikimedia.org/wikipedia/en/0/04/Ant-Man_%28Scott_Lang%29.png"
+  };
+
   const FIELD_MAP = [
-    { label: 'Real Name', keys: ['Real name', 'Alter ego'] },
+    { label: 'Real Name', keys: ['Full name', 'Alter ego', 'Real name'] },
     { label: 'First Appearance', keys: ['First appearance'] },
     { label: 'Created By', keys: ['Created by'] },
     { label: 'Affiliations', keys: ['Team affiliations', 'Affiliations'] },
@@ -178,8 +223,17 @@
       grid.innerHTML = '<div class="empty">No characters match your search.</div>';
       return;
     }
-    grid.innerHTML = characters.map(char => `
+    grid.innerHTML = characters.map(char => {
+      const imgUrl = CHARACTER_IMAGES[char.name];
+      const imgHtml = imgUrl
+        ? `<img class="card-img" src="${imgUrl}" alt="${char.name}" onerror="this.parentElement.querySelector('.card-img-placeholder') && (this.style.display='none'); this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display='flex');">`
+        : '';
+      const placeholderHtml = `<div class="card-img-placeholder" style="display:${imgUrl ? 'none' : 'flex'}">NO IMAGE</div>`;
+
+      return `
       <div class="card">
+        ${imgHtml}
+        ${placeholderHtml}
         <div class="card-name">${char.name}</div>
         ${FIELD_MAP.map(f => {
           const value = findField(char, f.keys);
@@ -191,8 +245,8 @@
             </div>`;
         }).join('')}
         <a class="card-link" href="${char.source_url}" target="_blank">View source ↗</a>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   }
 
   function loadData() {
